@@ -6,6 +6,9 @@ use App\Models\Post;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PostRequest;
+use App\Mail\NewPostCreated;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
@@ -43,7 +46,7 @@ class PostController extends Controller
      */
     public function store(PostRequest $request)
     {
-        //dd($request->all());
+        //ddd($request->all());
 
         $val_data = $request->validated();
 
@@ -55,7 +58,32 @@ class PostController extends Controller
 
         //$val_data['user_id'] = Auth::id();
 
+
+        //ddd($request->hasFile('cover_image'));
+
+        if($request->hasFile('cover_image')) {
+
+            $request->validate([
+                'cover_image' => 'nullable|image|max:500',
+            ]);
+
+            //ddd($request->all());
+
+            $path = Storage::put('post_images', $request->cover_image);
+
+            //ddd($path);
+
+            $val_data['cover_image'] = $path;
+        }
+
+        //ddd($val_data);
+
         $new_post = Post::create($val_data);
+
+        //Anteprima mail
+        //return (new NewPostCreated($new_post))->render();
+
+        Mail::to($request->user())->send(new NewPostCreated($new_post));
 
         return redirect()->route('admin.posts.index')->with('message', 'Post Created Successfully');
     }
@@ -100,6 +128,25 @@ class PostController extends Controller
         $val_data['slug'] = $slug;
 
         //dd($val_data);
+
+        if($request->hasFile('cover_image')) {
+
+            $request->validate([
+                'cover_image' => 'nullable|image|max:500',
+            ]);
+
+            Storage::delete($post->cover_image);
+
+            //ddd($request->all());
+
+            $path = Storage::put('post_images', $request->cover_image);
+
+            //ddd($path);
+
+            $val_data['cover_image'] = $path;
+        }
+
+        $post->update($val_data);
 
         return redirect()->route('admin.posts.index')->with('message', 'Post Updated Successfully');
     }
